@@ -1,5 +1,4 @@
-﻿*.opensdf
-*.pdb
+﻿*.pdb
 *.idb
 *.tlog
 *.vcxproj
@@ -12,3 +11,4 @@
 *.user
 *.exe
 *.obj
+*.opensdf
