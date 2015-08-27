@@ -15,10 +15,10 @@ using namespace std;
 
 void toClipboard(HWND hwnd, const std::string &s);
 
-#define HOST "anooserve.com"
-#define USERNAME "USERNAME"
-#define PASSWORD "PASSWORD"
+// Change this to your FTP server of choice, mine is a local one
+#define HOST "192.168.1.111"
 
+// Generates a random string consisting of a ver, an adjective and a noun (wordlist in words.h)
 string genRandom()
 {
 	string sentence;
@@ -28,6 +28,7 @@ string genRandom()
 	return sentence;
 }
 
+// Copy s to the clipboard in windows
 void toClipboard(HWND hwnd, const std::string &s)
 {
 	OpenClipboard(hwnd);
@@ -45,6 +46,7 @@ void toClipboard(HWND hwnd, const std::string &s)
 	GlobalFree(hg);
 }
 
+// Open a registry key, create it if it's not found and throw an error if you cant
 HKEY OpenKey(HKEY hRootKey, char* strKey)
 {
 	HKEY hKey;
@@ -62,6 +64,8 @@ HKEY OpenKey(HKEY hRootKey, char* strKey)
 	return hKey;
 }
 
+// a terribly written function to 'install' the drop program in the registry. 
+// clean this up
 bool install()
 {
 	char data[256];
@@ -69,26 +73,32 @@ bool install()
 	string cwd = data;
 	cwd = "\"" + cwd + "\\Anoodrop.exe\" upload \"%1\"";
 	strcpy(data, cwd.c_str());
-	HKEY hKey = OpenKey(HKEY_CLASSES_ROOT, "*\\shell\\anooserve\\command");
 
-	LONG nError = RegSetValueEx(hKey, NULL, NULL, REG_SZ, (LPBYTE)data, sizeof(data));
+	HKEY hKey = OpenKey(HKEY_CLASSES_ROOT, "*\\shell\\anooserve");
+
+	char data2[120] = {"Upload to Anooserve"};
+	LONG nError = RegSetValueEx(hKey, NULL, NULL, REG_SZ, (LPBYTE) data2, sizeof(data2));
 
 	if (nError)
-		cout << "Error: " << nError << " Could not set registry value: " << "command" << endl;
-
+	{
+		cout << "Error: " << nError << " Could not set registry value: " << "anooserve" << endl;
+		return false;
+	}
 	RegCloseKey(hKey);
 
-	hKey = OpenKey(HKEY_CLASSES_ROOT, "*\\shell\\anooserve");
-
-	char data2[120] = { "Upload to Anooserve" };
-	nError = RegSetValueEx(hKey, NULL, NULL, REG_SZ, (LPBYTE)data2, sizeof(data2));
-
+	hKey = OpenKey(HKEY_CLASSES_ROOT, "*\\shell\\anooserve\\command");
+	nError = RegSetValueEx(hKey, NULL, NULL, REG_SZ, (LPBYTE)data, sizeof(data));
 	if (nError)
-		cout << "Error: " << nError << " Could not set registry value: " << "anooserve" << endl;
+	{
+		cout << "Error: " << nError << " Could not set registry value: " << "command" << endl;
+		return false;
+	}
 
 	return true;
 }
 
+// Check for number of arguments, if it's fewer than 2 you must be running it empty
+// and want to install the program
 int main(int argc, char *argv[])
 {
 	switch (argc)
@@ -103,6 +113,7 @@ int main(int argc, char *argv[])
 			else {
 				std::cout << "Registry key not installed, try running as admin\r\n";
 			}
+			system("pause");
 			return 0;
 		}
 		case(3) : {
@@ -114,7 +125,6 @@ int main(int argc, char *argv[])
 		default:
 			return 0;
 	}
-	string total = argv[2];
 	HINTERNET hInternet;
 	HINTERNET hFtp;
 	cout << "(1/4) Internet: ";
@@ -124,9 +134,30 @@ int main(int argc, char *argv[])
 		cerr << "Error " << GetLastError() << endl;
 		return 2;
 	}
-	cout << "Connected" << endl << "(2/4) Anooserve: ";
+	cout << "Connected" << endl << "(2/4) Anooserve: " << endl;
+	string password, username;
+	cout << "Username: ";
+	if (std::ifstream("user.txt"))
+	{
+		getline(std::ifstream("user.txt"), username);
+		cout << username << endl;
+	}
+	else {
+		std::ofstream file("user.txt");
+		if (!file)
+		{
+			std::cout << "File could not be created" << std::endl;
+			return false;
+		}
+		getline(cin, username);
+		file << username;
+		file.close();
+	}
+	cout << "Password: ";
+	getline(cin, password);
+	string total = argv[2];
 
-	hFtp = InternetConnect(hInternet, HOST, INTERNET_DEFAULT_FTP_PORT, USERNAME, PASSWORD, INTERNET_SERVICE_FTP, 0, 0);
+	hFtp = InternetConnect(hInternet, HOST, INTERNET_DEFAULT_FTP_PORT, username.c_str(), password.c_str(), INTERNET_SERVICE_FTP, 0, 0);
 	if (!hFtp)
 	{
 		cerr << "Error " << GetLastError() << endl;
@@ -169,5 +200,6 @@ int main(int argc, char *argv[])
 	toClipboard(hwnd, link);
 	InternetCloseHandle(hFtp);
 	InternetCloseHandle(hInternet);
+	system("pause");
 	return 0;
 }
